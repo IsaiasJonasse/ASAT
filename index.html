@@ -210,6 +210,12 @@
     .login-icon { width: 60px; height: 60px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; background: rgba(201,226,101,.42); color: var(--forest); font-size: 1.6rem; }
     .login-card .form-intro { text-align: center; }
     .login-card .form-grid { grid-template-columns: 1fr; }
+    .auth-switch { margin: 22px 30px 0; padding: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 999px; background: var(--cream); }
+    .auth-switch button { min-height: 40px; padding: 6px 12px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: .8rem; font-weight: 800; cursor: pointer; }
+    .auth-switch button.active { color: #fff; background: var(--forest); box-shadow: 0 6px 16px rgba(18,55,42,.16); }
+    .auth-panel[hidden] { display: none; }
+    .account-note { margin: 16px 0 0; padding: 12px 14px; border-radius: 10px; color: var(--forest); background: rgba(201,226,101,.25); font-size: .72rem; line-height: 1.45; }
+    .password-hint { color: var(--muted); font-size: .68rem; }
     .success { display: none; padding: 55px 30px; text-align: center; }
     .success.show { display: block; }
     .success-mark { width: 68px; height: 68px; display: grid; place-items: center; margin: auto; border-radius: 50%; background: var(--lime); color: var(--forest); font-size: 2rem; }
@@ -462,12 +468,29 @@
   <div class="modal" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
     <div class="modal-card login-card">
       <div class="modal-head"><h2 id="loginTitle" data-i18n="welcomeBack">Welcome back</h2><button class="close-btn" type="button" data-close aria-label="Close">×</button></div>
-      <form class="form" id="loginForm">
+      <div class="auth-switch" role="tablist" aria-label="Member account options">
+        <button class="active" id="loginTab" type="button" role="tab" aria-selected="true" aria-controls="loginForm" data-auth-view="login" data-i18n="signIn">Sign in</button>
+        <button id="signupTab" type="button" role="tab" aria-selected="false" aria-controls="signupForm" data-auth-view="signup" data-i18n="createAccount">Create account</button>
+      </div>
+      <form class="form auth-panel" id="loginForm">
         <div class="login-icon">♙</div><p class="form-intro" data-i18n="loginIntro">Sign in to access private resources and your committee workspace.</p>
         <div class="form-grid"><div class="field"><label for="loginEmail" data-i18n="email">Email address</label><input id="loginEmail" type="email" required autocomplete="email"></div><div class="field"><label for="password" data-i18n="password">Password</label><input id="password" type="password" required autocomplete="current-password"></div></div>
         <div class="form-footer"><a class="text-link" href="mailto:hello@asat.tw?subject=Password help" data-i18n="forgotPassword">Forgot password?</a><button class="btn" type="submit" data-i18n="signIn">Sign in</button></div>
       </form>
+      <form class="form auth-panel" id="signupForm" hidden>
+        <div class="login-icon">+</div><p class="form-intro" data-i18n="signupIntro">Create your account to begin the ASAT member approval process.</p>
+        <div class="form-grid">
+          <div class="field"><label for="signupName" data-i18n="fullName">Full name *</label><input id="signupName" name="name" required autocomplete="name"></div>
+          <div class="field"><label for="signupEmail" data-i18n="email">Email address *</label><input id="signupEmail" name="email" type="email" required autocomplete="email"></div>
+          <div class="field"><label for="signupPassword" data-i18n="createPassword">Create password *</label><input id="signupPassword" name="password" type="password" required minlength="8" autocomplete="new-password"><span class="password-hint" data-i18n="passwordHint">Use at least 8 characters.</span></div>
+          <div class="field"><label for="confirmPassword" data-i18n="confirmPassword">Confirm password *</label><input id="confirmPassword" name="confirmPassword" type="password" required minlength="8" autocomplete="new-password"></div>
+          <label class="check"><input type="checkbox" required><span data-i18n="accountConsent">I agree to the privacy policy and member portal terms. *</span></label>
+        </div>
+        <p class="account-note" data-i18n="approvalNote">New accounts remain pending until the Membership team confirms your ASAT membership.</p>
+        <div class="form-footer"><button class="btn" style="width:100%" type="submit" data-i18n="createMemberAccount">Create member account</button></div>
+      </form>
       <div class="success" id="loginSuccess"><div class="success-mark">⌘</div><h3 data-i18n="portalReady">Portal ready</h3><p data-i18n="portalCopy">Authentication will activate when this prototype is connected to the selected CMS.</p><button class="btn" type="button" data-close data-i18n="done">Done</button></div>
+      <div class="success" id="signupSuccess"><div class="success-mark">✓</div><h3 data-i18n="accountRequested">Account requested</h3><p data-i18n="accountRequestedCopy">Your account request is ready. After the secure backend is connected, the Membership team will review it and email you when access is approved.</p><button class="btn" type="button" data-close data-i18n="done">Done</button></div>
     </div>
   </div>
 
@@ -505,6 +528,37 @@
     document.getElementById('loginForm').addEventListener('submit', e => {
       e.preventDefault(); e.currentTarget.style.display = 'none'; document.getElementById('loginSuccess').classList.add('show');
     });
+    const authTabs = document.querySelectorAll('[data-auth-view]');
+    const loginTitle = document.getElementById('loginTitle');
+    authTabs.forEach(tab => tab.addEventListener('click', () => {
+      const showSignup = tab.dataset.authView === 'signup';
+      document.getElementById('loginForm').hidden = showSignup;
+      document.getElementById('signupForm').hidden = !showSignup;
+      authTabs.forEach(item => {
+        const active = item === tab;
+        item.classList.toggle('active', active);
+        item.setAttribute('aria-selected', active);
+      });
+      const titleKey = showSignup ? 'createAccount' : 'welcomeBack';
+      loginTitle.dataset.i18n = titleKey;
+      loginTitle.innerHTML = language === 'zh' ? (zh[titleKey] || original[titleKey]) : original[titleKey];
+      (showSignup ? document.getElementById('signupName') : document.getElementById('loginEmail')).focus();
+    }));
+    document.getElementById('signupForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const password = document.getElementById('signupPassword');
+      const confirmation = document.getElementById('confirmPassword');
+      if (password.value !== confirmation.value) {
+        confirmation.setCustomValidity(language === 'zh' ? '兩次輸入的密碼不一致。' : 'Passwords do not match.');
+        confirmation.reportValidity();
+        return;
+      }
+      confirmation.setCustomValidity('');
+      e.currentTarget.style.display = 'none';
+      document.querySelector('.auth-switch').style.display = 'none';
+      document.getElementById('signupSuccess').classList.add('show');
+    });
+    document.getElementById('confirmPassword').addEventListener('input', e => e.currentTarget.setCustomValidity(''));
 
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
@@ -519,7 +573,7 @@
       howWeWork:'我們如何行動', departmentsTitle:'六大團隊，一個共同使命。', meetCommittee:'認識委員會', dept1:'教育與專業發展', dept1copy:'提供工作坊、導師計畫、學業指導與職涯準備。', dept2:'文化融合與學生福利', dept2copy:'促進身心福祉、文化交流與友善的留學體驗。', dept3:'會員動員', dept3copy:'拓展並凝聚遍布各校園的學生網絡。', dept4:'外部關係與夥伴合作', dept4copy:'與大學及合作夥伴建立有意義的長期關係。', dept5:'傳播與公共關係', dept5copy:'分享我們的故事、消息與共同成就。', dept6:'資訊科技與數位媒體', dept6copy:'推動數位平台、媒體與科技相關計畫。',
       whatsHappening:'近期活動', eventsTitle:'相聚、學習，一起慶祝。', viewCalendar:'查看完整行事曆', featured:'精選活動', event1:'2027 臺灣非洲日', openAll:'歡迎所有人', event2:'職涯啟航工作坊', event2meta:'線上 • 14:00–16:00', event3:'新生歡迎交流會', event3meta:'臺中 • 11:00–14:00', event4:'大學分會領袖論壇', event4meta:'新竹 • 09:30–13:00', event5:'社區服務日', event5meta:'臺南 • 08:30–15:00', details:'活動詳情',
       memberCommunity:'會員社群', membershipTitle:'你的網絡、你的資源、你的聲音。', membershipCopy:'加入 ASAT，找到歸屬、取得會員專屬機會，並共同塑造非洲學生在臺灣的體驗。', applyMembership:'申請入會', privateUpdates:'會員專屬消息', privateUpdatesCopy:'內部新聞與公告', resourceLibrary:'資源中心', resourceLibraryCopy:'學業、福利與職涯指南', teamWorkspace:'團隊工作區', teamWorkspaceCopy:'專案、任務與委員會檔案', mentorship:'導師支持', mentorshipCopy:'向同儕及專業人士學習', partnerships:'歡迎大學、非政府組織及社區單位洽談合作',
-      footerCopy:'連結、賦能並代表全臺非洲學生。', explore:'探索', members:'會員', joinAsat:'加入 ASAT', getSupport:'尋求協助', contact:'聯絡我們', applicationTitle:'會員申請', applicationIntro:'請簡單介紹自己，申請資料將由會員部門審核。', fullName:'姓名 *', email:'電子郵件 *', university:'就讀大學 *', country:'來源國家 *', degreeProgram:'學位／科系 *', departmentInterest:'感興趣的部門', whyJoin:'為什麼想加入 ASAT？', consent:'我同意 ASAT 為會員管理目的安全地儲存及處理本資料。*', privacyNote:'你的資料僅用於會員事務，未經同意不會出售或分享。', submitApplication:'提交申請', thankYou:'謝謝你！', successCopy:'申請資料已準備完成。連接 CMS 後即可正式接收表單。', done:'完成', welcomeBack:'歡迎回來', loginIntro:'登入以瀏覽會員資源與委員會工作區。', password:'密碼', forgotPassword:'忘記密碼？', signIn:'登入', portalReady:'會員入口已就緒', portalCopy:'此原型連接選定的 CMS 後即可啟用身分驗證。'
+      footerCopy:'連結、賦能並代表全臺非洲學生。', explore:'探索', members:'會員', joinAsat:'加入 ASAT', getSupport:'尋求協助', contact:'聯絡我們', applicationTitle:'會員申請', applicationIntro:'請簡單介紹自己，申請資料將由會員部門審核。', fullName:'姓名 *', email:'電子郵件 *', university:'就讀大學 *', country:'來源國家 *', degreeProgram:'學位／科系 *', departmentInterest:'感興趣的部門', whyJoin:'為什麼想加入 ASAT？', consent:'我同意 ASAT 為會員管理目的安全地儲存及處理本資料。*', privacyNote:'你的資料僅用於會員事務，未經同意不會出售或分享。', submitApplication:'提交申請', thankYou:'謝謝你！', successCopy:'申請資料已準備完成。連接 CMS 後即可正式接收表單。', done:'完成', welcomeBack:'歡迎回來', loginIntro:'登入以瀏覽會員資源與委員會工作區。', password:'密碼', forgotPassword:'忘記密碼？', signIn:'登入', createAccount:'建立帳號', signupIntro:'建立帳號以開始 ASAT 會員審核流程。', createPassword:'建立密碼 *', passwordHint:'請使用至少 8 個字元。', confirmPassword:'確認密碼 *', accountConsent:'我同意隱私權政策與會員入口使用條款。*', approvalNote:'新帳號將保持待審核狀態，直到會員部門確認你的 ASAT 會員資格。', createMemberAccount:'建立會員帳號', accountRequested:'帳號申請已送出', accountRequestedCopy:'帳號申請已準備完成。連接安全後端後，會員部門將進行審核，通過時會以電子郵件通知你。', portalReady:'會員入口已就緒', portalCopy:'此原型連接選定的 CMS 後即可啟用身分驗證。'
     };
     const original = {};
     document.querySelectorAll('[data-i18n]').forEach(el => original[el.dataset.i18n] = el.innerHTML);
